@@ -396,6 +396,7 @@ public class HiveMetaStore extends ThriftHiveMetastore {
 
     @Override
     public void init() throws MetaException {
+      // METASTORE_RAW_STORE_IMPL 默认值是org.apache.hadoop.hive.metastore.ObjectStore
       rawStoreClassName = hiveConf.getVar(HiveConf.ConfVars.METASTORE_RAW_STORE_IMPL);
       initListeners = MetaStoreUtils.getMetaStoreListeners(
           MetaStoreInitListener.class, hiveConf,
@@ -6539,6 +6540,7 @@ public class HiveMetaStore extends ThriftHiveMetastore {
 
     @SuppressWarnings("static-access")
     public HiveMetastoreCli(Configuration configuration) {
+      // 添加hiveconf option
       super("hivemetastore", true);
       this.port = HiveConf.getIntVar(configuration, HiveConf.ConfVars.METASTORE_SERVER_PORT);
 
@@ -6593,11 +6595,13 @@ public class HiveMetaStore extends ThriftHiveMetastore {
     HiveConf.setLoadMetastoreConfig(true);
     final HiveConf conf = new HiveConf(HMSHandler.class);
 
+    // 初始化端口号信息
     HiveMetastoreCli cli = new HiveMetastoreCli(conf);
-    cli.parse(args);
-    final boolean isCliVerbose = cli.isVerbose();
+    cli.parse(args); // 解析端口号信息
+    final boolean isCliVerbose = cli.isVerbose(); // false
     // NOTE: It is critical to do this prior to initializing log4j, otherwise
     // any log specific settings via hiveconf will be ignored
+    // 获取命令行的hiveconf 信息
     Properties hiveconf = cli.addHiveconfToSystemProperties();
 
     // If the log4j.configuration property hasn't already been explicitly set,
@@ -6619,7 +6623,6 @@ public class HiveMetaStore extends ThriftHiveMetastore {
       if (cli.isVerbose()) {
         System.err.println(msg);
       }
-
 
       // set all properties specified on the command line
       for (Map.Entry<Object, Object> item : hiveconf.entrySet()) {
@@ -6657,6 +6660,7 @@ public class HiveMetaStore extends ThriftHiveMetastore {
         }
       }
 
+      // 开启metastore的thrift服务
       Lock startLock = new ReentrantLock();
       Condition startCondition = startLock.newCondition();
       AtomicBoolean startedServing = new AtomicBoolean();
@@ -6715,10 +6719,10 @@ public class HiveMetaStore extends ThriftHiveMetastore {
       long maxMessageSize = conf.getIntVar(HiveConf.ConfVars.METASTORESERVERMAXMESSAGESIZE);
       int minWorkerThreads = conf.getIntVar(HiveConf.ConfVars.METASTORESERVERMINTHREADS);
       int maxWorkerThreads = conf.getIntVar(HiveConf.ConfVars.METASTORESERVERMAXTHREADS);
-      boolean tcpKeepAlive = conf.getBoolVar(HiveConf.ConfVars.METASTORE_TCP_KEEP_ALIVE);
-      boolean useFramedTransport = conf.getBoolVar(ConfVars.METASTORE_USE_THRIFT_FRAMED_TRANSPORT);
-      boolean useCompactProtocol = conf.getBoolVar(ConfVars.METASTORE_USE_THRIFT_COMPACT_PROTOCOL);
-      useSasl = conf.getBoolVar(HiveConf.ConfVars.METASTORE_USE_THRIFT_SASL);
+      boolean tcpKeepAlive = conf.getBoolVar(HiveConf.ConfVars.METASTORE_TCP_KEEP_ALIVE); // 默认true
+      boolean useFramedTransport = conf.getBoolVar(ConfVars.METASTORE_USE_THRIFT_FRAMED_TRANSPORT); // 默认false
+      boolean useCompactProtocol = conf.getBoolVar(ConfVars.METASTORE_USE_THRIFT_COMPACT_PROTOCOL); // 默认false
+      useSasl = conf.getBoolVar(HiveConf.ConfVars.METASTORE_USE_THRIFT_SASL); // 默认false
 
 
       TProcessor processor;
@@ -6729,9 +6733,11 @@ public class HiveMetaStore extends ThriftHiveMetastore {
         protocolFactory = new TCompactProtocol.Factory();
         inputProtoFactory = new TCompactProtocol.Factory(maxMessageSize, maxMessageSize);
       } else {
+        // 设置传输协议类型为二进制
         protocolFactory = new TBinaryProtocol.Factory();
         inputProtoFactory = new TBinaryProtocol.Factory(true, true, maxMessageSize, maxMessageSize);
       }
+      // 设置thrift处理器为HMSHandler类
       HMSHandler baseHandler = new HiveMetaStore.HMSHandler("new db based metaserver", conf,
           false);
       IHMSHandler handler = newRetryingHMSHandler(baseHandler, conf);
@@ -6755,7 +6761,7 @@ public class HiveMetaStore extends ThriftHiveMetastore {
         LOG.info("Starting DB backed MetaStore Server in Secure Mode");
       } else {
         // we are in unsecure mode.
-        if (conf.getBoolVar(ConfVars.METASTORE_EXECUTE_SET_UGI)) {
+        if (conf.getBoolVar(ConfVars.METASTORE_EXECUTE_SET_UGI)) { // 默认true
           transFactory = useFramedTransport ?
               new ChainedTTransportFactory(new TFramedTransport.Factory(),
                   new TUGIContainingTransport.Factory())
@@ -6833,7 +6839,7 @@ public class HiveMetaStore extends ThriftHiveMetastore {
       if (startLock != null) {
         signalOtherThreadsToStart(tServer, startLock, startCondition, startedServing);
       }
-      tServer.serve();
+      tServer.serve(); // 开启服务
     } catch (Throwable x) {
       x.printStackTrace();
       HMSHandler.LOG.error(StringUtils.stringifyException(x));
@@ -6914,6 +6920,7 @@ public class HiveMetaStore extends ThriftHiveMetastore {
         try {
           // Per the javadocs on Condition, do not depend on the condition alone as a start gate
           // since spurious wake ups are possible.
+          // 要等到server开启，才能执行
           while (!startedServing.get()) startCondition.await();
           startCompactorInitiator(conf);
           startCompactorWorkers(conf);
