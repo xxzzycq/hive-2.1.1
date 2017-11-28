@@ -64,12 +64,13 @@ public class HdfsUtils {
   public static void setFullFileStatus(Configuration conf, HdfsUtils.HadoopFileStatus sourceStatus,
     String targetGroup, FileSystem fs, Path target, boolean recursion) throws IOException {
     FileStatus fStatus= sourceStatus.getFileStatus();
-    String group = fStatus.getGroup();
+    String group = fStatus.getGroup(); // 获取原来目录的组信息
     boolean aclEnabled = Objects.equal(conf.get("dfs.namenode.acls.enabled"), "true");
-    FsPermission sourcePerm = fStatus.getPermission();
+    FsPermission sourcePerm = fStatus.getPermission(); // 获取原来目录权限
     List<AclEntry> aclEntries = null;
     AclStatus aclStatus;
     if (aclEnabled) {
+      // 获取原来目录的acl信息
       aclStatus =  sourceStatus.getAclStatus();
       if (aclStatus != null) {
         LOG.trace(aclStatus.toString());
@@ -83,7 +84,7 @@ public class HdfsUtils {
       }
     }
 
-    if (recursion) {
+    if (recursion) { // =false
       //use FsShell to change group, permissions, and extended ACL's recursively
       FsShell fsShell = new FsShell();
       fsShell.setConf(conf);
@@ -118,15 +119,15 @@ public class HdfsUtils {
       if (group != null && !group.isEmpty()) {
         if (targetGroup == null ||
             !group.equals(targetGroup)) {
-          fs.setOwner(target, null, group);
+          fs.setOwner(target, null, group); // 设置路径的owner
         }
       }
       if (aclEnabled) {
         if (null != aclEntries) {
-          fs.setAcl(target, aclEntries);
+          fs.setAcl(target, aclEntries); // 设置路径的acl
         }
       } else {
-        fs.setPermission(target, sourcePerm);
+        fs.setPermission(target, sourcePerm); // 设置路径的权限
       }
     }
   }

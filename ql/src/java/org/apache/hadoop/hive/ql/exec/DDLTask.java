@@ -4248,12 +4248,14 @@ public class DDLTask extends Task<DDLWork> implements Serializable {
       // this is not transactional
       for (Path location : getLocations(db, table, partSpec)) {
         FileSystem fs = location.getFileSystem(conf);
+        // 记录现在的fileStatus，主要是保留权限、组、owner信息，方便重建的时候设置回去
         HdfsUtils.HadoopFileStatus status = new HdfsUtils.HadoopFileStatus(conf, fs, location);
         FileStatus targetStatus = fs.getFileStatus(location);
         String targetGroup = targetStatus == null ? null : targetStatus.getGroup();
-        fs.delete(location, true);
-        fs.mkdirs(location);
+        fs.delete(location, true); // 删除目录
+        fs.mkdirs(location); // 再次创建目录
         try {
+          // 设置目录的权限为继承的父目录权限
           HdfsUtils.setFullFileStatus(conf, status, targetGroup, fs, location, false);
         } catch (Exception e) {
           LOG.warn("Error setting permissions of " + location, e);
@@ -4292,17 +4294,18 @@ public class DDLTask extends Task<DDLWork> implements Serializable {
   private List<Path> getLocations(Hive db, Table table, Map<String, String> partSpec)
       throws HiveException, InvalidOperationException {
     List<Path> locations = new ArrayList<Path>();
+    // 判断是否是清空分区数据
     if (partSpec == null) {
-      if (table.isPartitioned()) {
+      if (table.isPartitioned()) { // 表是分区表
         for (Partition partition : db.getPartitions(table)) {
-          locations.add(partition.getDataLocation());
+          locations.add(partition.getDataLocation()); // 添加表下面的每一个分区的路径
           EnvironmentContext environmentContext = new EnvironmentContext();
           if (needToUpdateStats(partition.getParameters(), environmentContext)) {
             db.alterPartition(table.getDbName(), table.getTableName(), partition, environmentContext);
           }
         }
       } else {
-        locations.add(table.getPath());
+        locations.add(table.getPath()); // 非分区表，直接添加表路径
         EnvironmentContext environmentContext = new EnvironmentContext();
         if (needToUpdateStats(table.getParameters(), environmentContext)) {
           db.alterTable(table.getDbName()+"."+table.getTableName(), table, environmentContext);
@@ -4310,7 +4313,7 @@ public class DDLTask extends Task<DDLWork> implements Serializable {
       }
     } else {
       for (Partition partition : db.getPartitionsByNames(table, partSpec)) {
-        locations.add(partition.getDataLocation());
+        locations.add(partition.getDataLocation()); // 添加表指定的分区的路径
         EnvironmentContext environmentContext = new EnvironmentContext();
         if (needToUpdateStats(partition.getParameters(), environmentContext)) {
           db.alterPartition(table.getDbName(), table.getTableName(), partition, environmentContext);

@@ -883,6 +883,7 @@ public class BeeLine implements Closeable {
         // ignore
       }
       ConsoleReader reader = getConsoleReader(inputStream);
+      // 携带控制台的输入流执行连接jdbc
       return execute(reader, false);
     } finally {
         close();
@@ -972,7 +973,7 @@ public class BeeLine implements Closeable {
         if (line != null) {
           line = line.trim();
         }
-
+        // step into
         if (!dispatch(line)) {
           lastExecutionResult = ERRNO_OTHER;
           if (exitOnError) break;
@@ -1099,7 +1100,7 @@ public class BeeLine implements Closeable {
       if (handler == null) {
         return error(loc("multiple-matches", cmdMap.keySet().toString()));
       }
-      return handler.execute(line);
+      return handler.execute(line); // go on
     }
     return cmdMap.values().iterator().next().execute(line);
   }
@@ -1136,11 +1137,13 @@ public class BeeLine implements Closeable {
     if (isHelpRequest(line)) {
       line = "!help";
     }
-
+    // step into
     if (isBeeLine) {
+      // 执行!操作，也就是beeline连接操作
       if (line.startsWith(COMMAND_PREFIX)) {
         // handle SQLLine command in beeline which starts with ! and does not end with ;
         return execCommandWithPrefix(line);
+        // 执行sql操作
       } else {
         return commands.sql(line, getOpts().getEntireLineAsCommand());
       }

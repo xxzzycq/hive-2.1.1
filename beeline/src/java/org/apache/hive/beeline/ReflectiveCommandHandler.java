@@ -49,6 +49,7 @@ public class ReflectiveCommandHandler extends AbstractCommandHandler {
   public boolean execute(String line) {
     lastException = null;
     try {
+      // 执行connect方法
       Object ob = beeLine.getCommands().getClass().getMethod(getName(),
           new Class[] {String.class})
           .invoke(beeLine.getCommands(), new Object[] {line});

@@ -258,6 +258,7 @@ class BeeLineOpts implements Completer {
 
 
   public void load() throws IOException {
+    // 加载beeline.properties文件内容
     try (InputStream in = new FileInputStream(rcFile)) {
       load(in);
     }
